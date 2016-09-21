@@ -13,7 +13,7 @@ float roundBox(float3 pos, float3 size, float round)
 
 float box(float3 pos, float3 size)
 {
-	return roundBox(pos, size, 0);
+    return roundBox(pos, size, 0);
 }
 
 float torus(float3 pos, float2 radius)
@@ -27,7 +27,8 @@ float floor(float3 pos)
     return dot(pos, float3(0.0, 1.0, 0.0)) + 1.0;
 }
 
-float cylinder(float3 pos, float2 r){
+float cylinder(float3 pos, float2 r)
+{
     float2 d = abs(float2(length(pos.xy), pos.z)) - r;
     return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - 0.1;
 }

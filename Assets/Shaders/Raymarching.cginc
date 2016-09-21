@@ -10,13 +10,20 @@ float3 GetCameraRight()       { return UNITY_MATRIX_V[0].xyz;     }
 float  GetCameraFocalLength() { return abs(UNITY_MATRIX_P[1][1]); }
 float  GetCameraMaxDistance() { return _ProjectionParams.z - _ProjectionParams.y; }
 
+float4 _Scale;
+
+inline float3 ToLocal(float3 pos)
+{
+    return mul(unity_WorldToObject, float4(pos, 1.0)).xyz * _Scale;
+}
+
 float2 GetScreenPos(float4 screenPos)
 {
 #if UNITY_UV_STARTS_AT_TOP
     screenPos.y *= -1.0;
 #endif
     screenPos.x *= _ScreenParams.x / _ScreenParams.y;
-    return float2(screenPos.x, screenPos.y);
+    return screenPos.xy / screenPos.w;
 }
 
 float3 GetRayDirection(float4 screenPos)
@@ -43,24 +50,61 @@ float GetDepth(float3 pos)
 #endif 
 }
 
-float3 GetNormal(float3 pos)
+float3 GetNormalOfDistanceFunction(float3 pos)
 {
-    const float d = 0.001;
+    float d = 0.001;
     return 0.5 + 0.5 * normalize(float3(
-        DistanceFunc(pos + float3(  d, 0.0, 0.0)) - DistanceFunc(pos + float3( -d, 0.0, 0.0)),
-        DistanceFunc(pos + float3(0.0,   d, 0.0)) - DistanceFunc(pos + float3(0.0,  -d, 0.0)),
-        DistanceFunc(pos + float3(0.0, 0.0,   d)) - DistanceFunc(pos + float3(0.0, 0.0,  -d))));
+        DistanceFunction(pos + float3(  d, 0.0, 0.0)) - DistanceFunction(pos + float3( -d, 0.0, 0.0)),
+        DistanceFunction(pos + float3(0.0,   d, 0.0)) - DistanceFunction(pos + float3(0.0,  -d, 0.0)),
+        DistanceFunction(pos + float3(0.0, 0.0,   d)) - DistanceFunction(pos + float3(0.0, 0.0,  -d))));
+}
+
+inline float ObjectSpaceDistanceFunction(float3 pos)
+{
+	return DistanceFunction(ToLocal(pos));
+}
+
+float3 GetNormalOfObjectSpaceDistanceFunction(float3 pos)
+{
+    float d = 0.001;
+    return 0.5 + 0.5 * normalize(float3(
+        ObjectSpaceDistanceFunction(pos + float3(  d, 0.0, 0.0)) - ObjectSpaceDistanceFunction(pos + float3( -d, 0.0, 0.0)),
+        ObjectSpaceDistanceFunction(pos + float3(0.0,   d, 0.0)) - ObjectSpaceDistanceFunction(pos + float3(0.0,  -d, 0.0)),
+        ObjectSpaceDistanceFunction(pos + float3(0.0, 0.0,   d)) - ObjectSpaceDistanceFunction(pos + float3(0.0, 0.0,  -d))));
 }
 
 struct VertInput
 {
     float4 vertex : POSITION;
+    float3 normal : NORMAL;
 };
 
 struct VertOutput
 {
     float4 vertex    : SV_POSITION;
     float4 screenPos : TEXCOORD0;
+};
+
+struct VertObjectOutput
+{
+    float4 vertex      : SV_POSITION;
+    float4 screenPos   : TEXCOORD0;
+    float4 worldPos    : TEXCOORD1;
+    float3 worldNormal : TEXCOORD2;
+};
+
+struct VertShadowInput
+{
+    float4 vertex : POSITION;
+    float3 normal : NORMAL;
+    float2 uv1    : TEXCOORD1;
+};
+
+struct VertShadowOutput
+{
+    V2F_SHADOW_CASTER;
+    float4 screenPos : TEXCOORD1;
+    float4 worldPos  : TEXCOORD2;
 };
 
 struct GBufferOut
@@ -77,6 +121,25 @@ VertOutput vert(VertInput v)
     VertOutput o;
     o.vertex = v.vertex;
     o.screenPos = o.vertex;
+    return o;
+}
+
+VertObjectOutput vert_object(VertInput v)
+{
+    VertObjectOutput o;
+    o.vertex = mul(UNITY_MATRIX_MVP, v.vertex);
+    o.screenPos = o.vertex;
+    o.worldPos = mul(unity_ObjectToWorld, v.vertex);
+    o.worldNormal = mul(unity_ObjectToWorld, v.normal);
+    return o;
+}
+
+VertShadowOutput vert_shadow(VertShadowInput v)
+{
+    VertShadowOutput o;
+    TRANSFER_SHADOW_CASTER_NORMALOFFSET(o);
+    o.screenPos = o.pos;
+    o.worldPos = mul(unity_ObjectToWorld, v.vertex);
     return o;
 }
 

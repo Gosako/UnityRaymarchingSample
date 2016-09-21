@@ -1,4 +1,4 @@
-﻿Shader "Raymarching/Test"
+﻿Shader "Raymarching/World"
 {
 
 Properties
@@ -16,11 +16,11 @@ Pass
 {
     Tags { "LightMode" = "Deferred" }
 
-    Stencil 
+    Stencil
     {
         Comp Always
         Pass Replace
-        Ref 128
+        Ref 255
     }
 
     CGPROGRAM
@@ -35,7 +35,7 @@ Pass
 
     #define PI 3.14159265358979
 
-    float DistanceFunc(float3 pos)
+    float DistanceFunction(float3 pos)
     {
         float r = abs(sin(2 * PI * _Time.y / 2.0));
         float d1 = roundBox(repeat(pos, float3(6, 6, 6)), 1, r);
@@ -59,7 +59,7 @@ Pass
         float len = 0.0;
         float3 pos = camPos + _ProjectionParams.y * rayDir;
         for (int i = 0; i < 100; ++i) {
-            distance = DistanceFunc(pos);
+            distance = DistanceFunction(pos);
             len += distance;
             pos += rayDir * distance;
             if (distance < 0.001 || len > maxDist) break;
@@ -68,10 +68,10 @@ Pass
         if (distance > 0.001) discard;
 
         float depth = GetDepth(pos);
-        float3 normal = GetNormal(pos);
+        float3 normal = GetNormalOfDistanceFunction(pos);
 
-		float u = (1.0 - floor(fmod(pos.x, 2.0))) * 5;
-		float v = (1.0 - floor(fmod(pos.y, 2.0))) * 5;
+        float u = (1.0 - floor(fmod(pos.x, 2.0))) * 5;
+        float v = (1.0 - floor(fmod(pos.y, 2.0))) * 5;
 
         GBufferOut o;
         o.diffuse  = float4(1.0, 1.0, 1.0, 1.0);

@@ -124,6 +124,7 @@ struct VertShadowOutput
     V2F_SHADOW_CASTER;
     float4 screenPos : TEXCOORD1;
     float4 worldPos  : TEXCOORD2;
+	float3 normal    : TEXCOORD3;
 };
 
 struct GBufferOut
@@ -156,9 +157,10 @@ VertObjectOutput vert_object(VertInput v)
 VertShadowOutput vert_shadow(VertShadowInput v)
 {
     VertShadowOutput o;
-    TRANSFER_SHADOW_CASTER_NORMALOFFSET(o);
+	TRANSFER_SHADOW_CASTER_NORMALOFFSET(o);
     o.screenPos = o.pos;
     o.worldPos = mul(unity_ObjectToWorld, v.vertex);
+	o.normal = v.normal;
     return o;
 }
 

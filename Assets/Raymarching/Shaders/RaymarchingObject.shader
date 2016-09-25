@@ -9,6 +9,7 @@ Tags { "RenderType" = "Opaque" "DisableBatching" = "True" }
 CGINCLUDE
 
 #include "UnityCG.cginc"
+#include "Lighting.cginc"
 #include "Utils.cginc"
 #include "Primitives.cginc"
 
@@ -80,20 +81,55 @@ GBufferOut frag(VertObjectOutput i)
 	return o;
 }
 
+struct Output
+{
+	float3 color : SV_Target;
+	float depth : SV_Depth;
+};
+
+
+#ifdef SHADOWS_CUBE
+
 float4 frag_shadow(VertShadowOutput i) : SV_Target
 {
 	float3 rayDir = GetRayDirectionForShadow(i.screenPos);
 	float3 pos = i.worldPos;
 	float distance = 0.0;
-
 	Raymarch(pos, distance, rayDir, 0.001, 10);
 
-#ifdef SHADOWS_CUBE
 	i.vec = pos - _LightPositionRange.xyz;
-#endif
-
 	SHADOW_CASTER_FRAGMENT(i);
 }
+
+#else
+
+void frag_shadow(
+	VertShadowOutput i, 
+	out float4 outColor : SV_Target, 
+	out float  outDepth : SV_Depth)
+{
+	// light direction of directional light 
+	float3 rayDir = -UNITY_MATRIX_V[2].xyz;
+
+	// light direction of spot light
+	if ((UNITY_MATRIX_P[3].x != 0.0) || 
+		(UNITY_MATRIX_P[3].y != 0.0) || 
+		(UNITY_MATRIX_P[3].z != 0.0)) {
+		rayDir = GetRayDirectionForShadow(i.screenPos);
+	}
+
+	float3 pos = i.worldPos;
+	float distance = 0.0;
+	Raymarch(pos, distance, rayDir, 0.001, 10);
+
+	float4 opos = mul(unity_WorldToObject, float4(pos, 1.0));
+	opos = UnityClipSpaceShadowCasterPos(opos, i.normal);
+	opos = UnityApplyLinearShadowBias(opos);
+
+	outColor = outDepth = opos.z / opos.w;
+}
+
+#endif
 
 ENDCG
 

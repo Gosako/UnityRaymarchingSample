@@ -40,6 +40,25 @@ float3 GetRayDirection(float4 screenPos)
     return normalize((camSide * sp.x) + (camUp * sp.y) + (camDir * focalLen));
 }
 
+float3 GetRayDirectionForShadow(float4 screenPos)
+{
+    float4 sp = screenPos;
+
+#if UNITY_UV_STARTS_AT_TOP
+    sp.y *= -1.0;
+#endif
+    sp.xy /= sp.w;
+
+    float3 camPos      = GetCameraPosition();
+    float3 camDir      = GetCameraForward();
+    float3 camUp       = GetCameraUp();
+    float3 camSide     = GetCameraRight();
+    float  focalLen    = GetCameraFocalLength();
+    float  maxDistance = GetCameraMaxDistance();
+
+    return normalize((camSide * sp.x) + (camUp * sp.y) + (camDir * focalLen));
+}
+
 float GetDepth(float3 pos)
 {
     float4 vpPos = mul(UNITY_MATRIX_VP, float4(pos, 1.0));

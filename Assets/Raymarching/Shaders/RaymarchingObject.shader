@@ -9,9 +9,6 @@ Tags { "RenderType" = "Opaque" "DisableBatching" = "True" }
 CGINCLUDE
 
 #include "UnityCG.cginc"
-#include "Lighting.cginc"
-#include "AutoLight.cginc"
-
 #include "Utils.cginc"
 #include "Primitives.cginc"
 
@@ -61,7 +58,7 @@ GBufferOut frag(VertObjectOutput i)
 	float3 rayDir = GetRayDirection(i.screenPos);
 	float3 pos = i.worldPos;
 	float distance = 0;
-	Raymarch(pos, distance, rayDir, 0.001, 50);
+	Raymarch(pos, distance, rayDir, 0.001, 30);
 
 	float depth = GetDepth(pos);
 	float3 normal = i.worldNormal * 0.5 + 0.5;
@@ -85,16 +82,17 @@ GBufferOut frag(VertObjectOutput i)
 
 float4 frag_shadow(VertShadowOutput i) : SV_Target
 {
-	float3 rayDir = GetRayDirection(i.screenPos);
+	float3 rayDir = GetRayDirectionForShadow(i.screenPos);
 	float3 pos = i.worldPos;
 	float distance = 0.0;
 
 	Raymarch(pos, distance, rayDir, 0.001, 10);
 
-	// SHADOW_CASTER_FRAGMENT(i);
+#ifdef SHADOWS_CUBE
+	i.vec = pos - _LightPositionRange.xyz;
+#endif
 
-    float4 vpPos = mul(UNITY_MATRIX_VP, float4(pos, 1.0));
-    return vpPos.z / vpPos.w * 0.18;
+	SHADOW_CASTER_FRAGMENT(i);
 }
 
 ENDCG
@@ -121,12 +119,6 @@ Pass
 Pass
 {
 	Tags { "LightMode" = "ShadowCaster" }
-
-	Fog { Mode Off }
-	ZWrite On
-	ZTest LEqual
-	Cull Off
-	Offset 1, 1
 
 	CGPROGRAM
 	#pragma target 3.0

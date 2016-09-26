@@ -81,13 +81,6 @@ GBufferOut frag(VertObjectOutput i)
 	return o;
 }
 
-struct Output
-{
-	float3 color : SV_Target;
-	float depth : SV_Depth;
-};
-
-
 #ifdef SHADOWS_CUBE
 
 float4 frag_shadow(VertShadowOutput i) : SV_Target
